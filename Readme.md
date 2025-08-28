@@ -26,7 +26,7 @@ Docs: TODO
     \______   \/   _____/|    |    
      |     ___/\_____  \ |    |    
      |    |    /        \|    |___ 
-     |____|   /_______  /|_______ \  v0.1
+     |____|   /_______  /|_______ \  v0.3
                       \/         \/
 
 
@@ -52,15 +52,24 @@ SYNTAX:
 OPTIONS:
   -h, --help        show this help text
 
-  -w, --warn        {float} warn threshold in seconds (default: 0.5)
   -c, --critical    {float} critical threshold in seconds (default: 2)
-
   -f, --force       Force execution of profiler if command in front of pipe 
                     wasn't detected
-  -t, --timeout     {float} timeout in seconds (default: 60)
-
+  -l, --lines       Show line number in front of output
+  -t, --timeout     {float} timeout of measurement in seconds (default: 60)
   -r, --repeat      {integer} number of output lines when to repeat header
-                    (default: 100)
+                    (default: off; suggestion: 100)
+  -v, --version     Show version
+  -w, --warn        {float} warn threshold in seconds (default: 0.5)
+
+
+EXAMPLES:
+  <your-command> | psl -l -r=100
+        Show line numbers and repeat header every 100 lines
+
+  <your-command> | psl -w=0.1 -c=0.5
+        Color time in yellow if delta > 0.1 seconds and red if delta > 0.5 seconds
+
 ```
 
 ## Screenshot
@@ -69,5 +78,4 @@ OPTIONS:
 
 ## TODO
 
-- Compile as ELF binary
 - Docs
