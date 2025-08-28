@@ -6,7 +6,7 @@
  */
 
 return [
-    'appname'=>"PLS",
+    'appname'=>"PSL",
     'php'=>[
         "version"=>"8.4.4",
         "libs" => [
