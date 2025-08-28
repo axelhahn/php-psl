@@ -1,0 +1,29 @@
+<?php
+/**
+ * 
+ * APP SPECIFIC CONFIG FOR BUILD PROCESS
+ * 
+ */
+
+return [
+    'appname'=>"Your appname",
+    'php'=>[
+        "version"=>"8.4.4",
+        "libs" => [
+            "readline" => true,
+            "zlib" => false,
+        ],
+    ],
+    "main" => "src/main.php",
+    "merge" => [
+        "src/config.php",
+        "vendor/<lib>/<file_1>.php",
+        "vendor/<lib>/<file_2>.php",
+    ],
+    "replace" => [
+        "strings" => [
+            // <what> => <new value>
+        ],
+    ],
+];
+

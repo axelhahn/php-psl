@@ -1,0 +1,18 @@
+#!/bin/env php
+<?php
+/**
+ * POST ACTIPONS after build
+ */
+
+$sshTarget="webmaster@downloads.example.com";
+$webTargetdir="/var/www/downloads.example.com/public_html/downloads/appmonitor_client";
+
+$sPublishFiles=basename($OUTFILE).'*';
+
+_h1("POST ACTIONS :: PUBLISH");
+_chdir("$selfdir/$dirPackages");
+
+_exec("scp $sPublishFiles $sshTarget:/tmp");
+_exec("ssh $sshTarget sudo mv /tmp/$sPublishFiles $webTargetdir");
+
+_h1("Done.");
