@@ -34,6 +34,9 @@ $sColorBad = "\033[31m";
 $sColorCli = "\033[34m";
 $sColorReset = "\033[0m";
 
+$iSlowest=0;
+$aSlowest=[];
+
 // ---MARK---INCLUDE---START---
 
 require_once __DIR__ . '/process.class.php';
@@ -202,6 +205,12 @@ while ($bRun) {
         $delta = round($iNow - $iLastLine, 3);
         if ($delta == "0.000") {
             $delta = "     ";
+        } else {
+            if($iSlowest < ($iNow - $iLastLine)) {
+                $aSlowest=[$iCounter, $delta, trim($line)];
+                $iSlowest = ($iNow - $iLastLine);
+            }
+
         }
 
         // insert extra table header
@@ -246,7 +255,13 @@ while ($bRun) {
     }
 }
 
+if(count($aSlowest)){
+    echo "Slowest item:\nline $aSlowest[0] - $aSlowest[1] ms - $aSlowest[2]\n\n";
+}
+// print_r($aSlowest);
+
 echo "Done.\n";
+
 // ----------------------------------------------------------------------
 // END
 // ----------------------------------------------------------------------
