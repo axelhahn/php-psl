@@ -12,12 +12,14 @@
 // CONFIG
 // ----------------------------------------------------------------------
 
-$VERSION = "0.2";
+$VERSION = "0.3";
 $iTimeout = 60;
 $iWarn = 0.5;
 $iCritical = 2;
 $iRepeatHeader = 100;
 $bForceExecution = false;
+$bShowLines = false;
+$bShowHeader = false;
 
 // ----------------------------------------------------------------------
 // INTERNAL VARS
@@ -35,6 +37,7 @@ $sColorCli = "\033[34m";
 $sColorReset = "\033[0m";
 
 $iSlowest=0;
+$iCountSlowest=5;
 $aSlowest=[];
 
 // ---MARK---INCLUDE---START---
@@ -48,9 +51,22 @@ require_once __DIR__ . '/process.class.php';
 // FUNCTIONS
 // ----------------------------------------------------------------------
 
+function showHeader(){
+    global $VERSION;
+    echo "
+    __________  _________.____     
+    \______   \/   _____/|    |    
+     |     ___/\_____  \ |    |    
+     |    |    /        \|    |___ 
+     |____|   /_______  /|_______ \  v$VERSION
+                      \/         \/
+
+";  
+}
+
 function showHelp()
 {
-    global $iTimeout, $iWarn, $iCritical, $iRepeatHeader, $VERSION;
+    global $iTimeout, $iWarn, $iCritical, $iRepeatHeader;
     echo "
     PROFILER FOR STDOUT LINES
 
@@ -74,38 +90,60 @@ SYNTAX:
 OPTIONS:
   -h, --help        show this help text
 
-  -w, --warn        {float} warn threshold in seconds (default: $iWarn)
   -c, --critical    {float} critical threshold in seconds (default: $iCritical)
-
   -f, --force       Force execution of profiler if command in front of pipe 
                     wasn't detected
-  -t, --timeout     {float} timeout in seconds (default: $iTimeout)
-
+  -l, --lines       Show line number in front of output
+  -t, --timeout     {float} timeout of measurement in seconds (default: $iTimeout)
   -r, --repeat      {integer} number of output lines when to repeat header
-                    (default: $iRepeatHeader)
+                    (default: off; suggestion: $iRepeatHeader)
+  -v, --version     Show version
+  -w, --warn        {float} warn threshold in seconds (default: $iWarn)
+
+
+EXAMPLES:
+  <your-command> | psl -l -r=100
+        Show line numbers and repeat header every 100 lines
+
+  <your-command> | psl -w=0.1 -c=0.5
+        Color time in yellow if delta > 0.1 seconds and red if delta > 0.5 seconds
 
 ";
 }
 
 function tableHeader()
 {
-    global $sColorCli, $sColorReset;
-    echo $sColorCli
-        . "-----------+-----------------+---------------------------------------------------\n"
-        . "           |   time [sec]    |\n"
-        . "      line | total |  delta  | output\n"
-        . "-----------+-------+---------+---------------------------------------------------\n"
-        . $sColorReset
-    ;
+    global $bShowLines, $bShowHeader, $sColorCli, $sColorReset;
+    if($bShowHeader){
+        echo $sColorCli
+            . ($bShowLines ? "-----------+" : "--")."-----------------+---------------------------------------------------\n"
+            . ($bShowLines ? "           |" : "  ")."   Time [sec]    |\n"
+            . ($bShowLines ? "      Line |" : "  ")." Total |  Delta  | Output\n"
+            . ($bShowLines ? "-----------+" : "--")."-------+---------+---------------------------------------------------\n"
+            . $sColorReset
+        ;
+    }
 }
 
-function getPPID($s): int
-{
-    preg_match('/(\d+).*(\d+).*/', $s, $matches);
-    print_r($matches);
-    return $matches[1];
+function renderSlowest(){
+    global $aSlowest, $iCountSlowest, $sColorCli, $sColorReset;
+    if (count($aSlowest)==0){
+        return;
+    }
+    $iCount=0;
+    echo "{$sColorCli}$iCountSlowest Slowest items:\n\n"
+        ."     [s]   Line   Output\n\n";
+    foreach($aSlowest as $aItems){
+        foreach ($aItems as $aItem){
+            $iCount++;
+            printf("%8s   %4d   %s \n", $aItem[1], $aItem[0], $aItem[2]);
+        }
+        if($iCount>=$iCountSlowest){
+            break;
+        }
+    }
+    echo "$sColorReset\n";
 }
-
 // ----------------------------------------------------------------------
 // MAIN
 // ----------------------------------------------------------------------
@@ -113,27 +151,20 @@ function getPPID($s): int
 if (PHP_OS !== 'Linux') {
     echo "{$sColorWarn}Warning: This tool was developed for Linux. You should abort.{$sColorReset}\n";
 }
-
-echo "
-    __________  _________.____     
-    \______   \/   _____/|    |    
-     |     ___/\_____  \ |    |    
-     |    |    /        \|    |___ 
-     |____|   /_______  /|_______ \  v$VERSION
-                      \/         \/
-
-";
-// ---------- handle cli parms
-
-
 if ($argc > 1) {
     parse_str(implode('&', array_slice($argv, 1)), $_GET);
 }
+
+
+// ---------- handle cli parms
+
+
 
 foreach ($_GET as $key => $value) {
     switch ($key) {
         case "-h":
         case "--help":
+            showHeader();
             showHelp();
             exit(0);
 
@@ -157,10 +188,21 @@ foreach ($_GET as $key => $value) {
             $bForceExecution = true;
             break;
 
+        case "-l":
+        case "--lines":
+            $bShowLines=true;
+            break;
+
         case "-r":
         case "--repeat":
+            $bShowHeader=true;
             $iRepeatHeader = (int) $value;
             break;
+
+        case "-v":
+        case "--version":
+            echo "$VERSION\n";
+            exit(0);
 
         default:
             echo "Unknown option: '$key" . ($value ? "=$value" : "") . "'. Use -h to show help.\n";
@@ -176,9 +218,10 @@ $ppid = $oProcess->ppid;
 
 exec("ps -o pid,ppid,comm | grep $ppid", $outpsStart);
 if (count($outpsStart) < 3 && !$bForceExecution) {
-    echo "$sColorBad\nERROR: no sibling process was found.$sColorReset\n\n"
+    echo "$sColorBad\nERROR: no sibling process was found.$sColorReset\n"
+        . "Remark: This can happen if command exits within a fraction of a second.\n\n"
         . "  To measure execution times use syntax '<your-command> | psl'.\n"
-        . "  If the detection was wrong you can force the execution using --force\n"
+        . "  You can force the execution using --force\n"
         . "  e.g. '<your-command> | psl --force --timeout=5'\n\n"
     ;
     exit(2);
@@ -197,18 +240,28 @@ while ($bRun) {
 
     // 
     $sWait = round($iNow - $iLastLine, 1);
-    printf("%26s\r", $sWait);
+    if($bShowLines) {
+        "          ";
+    }
+    printf("%16s\r", $sWait);
 
 
     if (strlen($line) > 0) {
         $iCounter++;
-        $delta = round($iNow - $iLastLine, 3);
+        $delta=sprintf("%1.3f", ($iNow - $iLastLine));
         if ($delta == "0.000") {
             $delta = "     ";
         } else {
+
             if($iSlowest < ($iNow - $iLastLine)) {
-                $aSlowest=[$iCounter, $delta, trim($line)];
-                $iSlowest = ($iNow - $iLastLine);
+                $key=sprintf("%07.3f", $delta);
+                $aSlowest[$key][]=[$iCounter, $delta, trim($line)];
+                krsort($aSlowest);
+                if(count(array_keys($aSlowest)) > $iCountSlowest) {
+                    $aSlowest=array_slice($aSlowest, 0, $iCountSlowest);
+                    $sLastKey=key($aSlowest);
+                    $iSlowest=(float)array_key_last($aSlowest);
+                }
             }
 
         }
@@ -225,11 +278,11 @@ while ($bRun) {
         if ($delta > $iCritical) {
             $sColor = $sColorBad;
         }
-        if ($delta > "0") {
-            $delta = sprintf("%5.3F", $delta);
-        }
 
-        printf("%10s   %-7.3f   %-8s   %s\n", $iCounter, $iNow - $iStart, "{$sColor}{$delta}{$sColorReset}", trim($line));
+        if($bShowLines) {
+            printf("%10s", $iCounter);
+        }
+        printf("   %-7.3f   %-8s   %s\n", $iNow - $iStart, "{$sColor}{$delta}{$sColorReset}", trim($line));
         $iLastLine = $iNow;
     }
 
@@ -239,6 +292,8 @@ while ($bRun) {
         echo "{$sColorBad}Stopped: Timeout of $iTimeout sec was reached.$sColorReset\n";
         $bRun = false;
     }
+
+    // detect process in front of pipe is still running
     if ($iNow - $iLastLine > 1 && $iNow - $iProcessCheck > 2) {
         $outpsNow = [];
         exec("ps -o pid,ppid,comm | grep $ppid", $outpsNow); // print_r($outpsNow);
@@ -251,14 +306,12 @@ while ($bRun) {
             }
         }
         $iProcessCheck = $iNow;
-
     }
 }
 
-if(count($aSlowest)){
-    echo "Slowest item:\nline $aSlowest[0] - $aSlowest[1] ms - $aSlowest[2]\n\n";
-}
-// print_r($aSlowest);
+echo "\n$sColorCli---------------------------------------------------------------------$sColorReset\n\n";
+
+renderSlowest();
 
 echo "Done.\n";
 
