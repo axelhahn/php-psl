@@ -12,7 +12,7 @@
 // CONFIG
 // ----------------------------------------------------------------------
 
-$VERSION="0.1";
+$VERSION = "0.2";
 $iTimeout = 60;
 $iWarn = 0.5;
 $iCritical = 2;
@@ -34,7 +34,12 @@ $sColorBad = "\033[31m";
 $sColorCli = "\033[34m";
 $sColorReset = "\033[0m";
 
+// ---MARK---INCLUDE---START---
+
 require_once __DIR__ . '/process.class.php';
+
+// ---MARK---INCLUDE---END---
+
 
 // ----------------------------------------------------------------------
 // FUNCTIONS
@@ -91,7 +96,7 @@ function tableHeader()
     ;
 }
 
-function getPPID($s):int
+function getPPID($s): int
 {
     preg_match('/(\d+).*(\d+).*/', $s, $matches);
     print_r($matches);
@@ -102,7 +107,7 @@ function getPPID($s):int
 // MAIN
 // ----------------------------------------------------------------------
 
-if(PHP_OS !== 'Linux') {
+if (PHP_OS !== 'Linux') {
     echo "{$sColorWarn}Warning: This tool was developed for Linux. You should abort.{$sColorReset}\n";
 }
 
@@ -151,11 +156,11 @@ foreach ($_GET as $key => $value) {
 
         case "-r":
         case "--repeat":
-            $iRepeatHeader = (int)$value;
+            $iRepeatHeader = (int) $value;
             break;
 
         default:
-            echo "Unknown option: '$key".($value ? "=$value" : "")."'. Use -h to show help.\n";
+            echo "Unknown option: '$key" . ($value ? "=$value" : "") . "'. Use -h to show help.\n";
             exit(1);
     }
 }
@@ -164,35 +169,35 @@ foreach ($_GET as $key => $value) {
 
 $oProcess = new process();
 
-$ppid=$oProcess->ppid;
+$ppid = $oProcess->ppid;
 
-exec("ps -o pid,ppid,comm | grep $ppid", $outpsStart); 
-if (count($outpsStart)<3 && !$bForceExecution) {
+exec("ps -o pid,ppid,comm | grep $ppid", $outpsStart);
+if (count($outpsStart) < 3 && !$bForceExecution) {
     echo "$sColorBad\nERROR: no sibling process was found.$sColorReset\n\n"
-        ."  To measure execution times use syntax '<your-command> | psl'.\n"
-        ."  If the detection was wrong you can force the execution using --force\n"
-        ."  e.g. '<your-command> | psl --force --timeout=5'\n\n"
-        ;
+        . "  To measure execution times use syntax '<your-command> | psl'.\n"
+        . "  If the detection was wrong you can force the execution using --force\n"
+        . "  e.g. '<your-command> | psl --force --timeout=5'\n\n"
+    ;
     exit(2);
 }
 
-stream_set_blocking(STDIN, FALSE );
+stream_set_blocking(STDIN, FALSE);
 stream_set_timeout(STDIN, 1);
 
 tableHeader();
 
-$bRun=true;
+$bRun = true;
 while ($bRun) {
 
     $line = fgets(STDIN); // reads one line from STDIN
     $iNow = microtime(true);
 
     // 
-    $sWait=round($iNow - $iLastLine, 1);
+    $sWait = round($iNow - $iLastLine, 1);
     printf("%26s\r", $sWait);
 
 
-    if (strlen($line) > 0 ) {
+    if (strlen($line) > 0) {
         $iCounter++;
         $delta = round($iNow - $iLastLine, 3);
         if ($delta == "0.000") {
@@ -223,18 +228,18 @@ while ($bRun) {
     if ($iNow - $iLastLine > $iTimeout) {
         echo "                                                            \n";
         echo "{$sColorBad}Stopped: Timeout of $iTimeout sec was reached.$sColorReset\n";
-        $bRun=false;
+        $bRun = false;
     }
     if ($iNow - $iLastLine > 1 && $iNow - $iProcessCheck > 2) {
-        $outpsNow=[];
+        $outpsNow = [];
         exec("ps -o pid,ppid,comm | grep $ppid", $outpsNow); // print_r($outpsNow);
-        foreach($outpsStart as $sLine) {
-            if(!in_array($sLine, $outpsNow)) {
+        foreach ($outpsStart as $sLine) {
+            if (!in_array($sLine, $outpsNow)) {
                 echo "                                                            \n";
                 // echo "{$sColorWarn}Sibling process was stopped:$sColorReset $sLine.\n\n";
-                $bRun=false;
+                $bRun = false;
                 break;
-            }            
+            }
         }
         $iProcessCheck = $iNow;
 
