@@ -12,7 +12,8 @@
 // CONFIG
 // ----------------------------------------------------------------------
 
-$VERSION = "0.3";
+$VERSION = "0.5";
+
 $iTimeout = 60;
 $iWarn = 0.5;
 $iCritical = 2;
@@ -66,7 +67,7 @@ function showHeader(){
 
 function showHelp()
 {
-    global $iTimeout, $iWarn, $iCritical, $iRepeatHeader;
+    global $iTimeout, $iWarn, $iCritical, $iRepeatHeader, $iCountSlowest;
     echo "
     PROFILER FOR STDOUT LINES
 
@@ -97,6 +98,8 @@ OPTIONS:
   -t, --timeout     {float} timeout of measurement in seconds (default: $iTimeout)
   -r, --repeat      {integer} number of output lines when to repeat header
                     (default: off; suggestion: $iRepeatHeader)
+
+  -s. --slowest     {int} set number of slowest items to show; default: $iCountSlowest
   -v, --version     Show version
   -w, --warn        {float} warn threshold in seconds (default: $iWarn)
 
@@ -199,6 +202,11 @@ foreach ($_GET as $key => $value) {
             $iRepeatHeader = (int) $value;
             break;
 
+        case "-s":
+        case "--slowest":
+            $iCountSlowest = (int) $value;
+            break;
+
         case "-v":
         case "--version":
             echo "$VERSION\n";
@@ -223,6 +231,7 @@ if (count($outpsStart) < 3 && !$bForceExecution) {
         . "  To measure execution times use syntax '<your-command> | psl'.\n"
         . "  You can force the execution using --force\n"
         . "  e.g. '<your-command> | psl --force --timeout=5'\n\n"
+        . "  Run 'psl --help' for more information\n\n"
     ;
     exit(2);
 }
@@ -240,10 +249,13 @@ while ($bRun) {
 
     // 
     $sWait = round($iNow - $iLastLine, 1);
-    if($bShowLines) {
-        "          ";
+    if(!strstr($sWait, ".")) {
+        $sWait .= ".0";
     }
-    printf("%16s\r", $sWait);
+    // if($bShowLines) {
+    //     echo "          ";
+    // }
+    printf("%15s\r", $sWait);
 
 
     if (strlen($line) > 0) {
@@ -282,7 +294,7 @@ while ($bRun) {
         if($bShowLines) {
             printf("%10s", $iCounter);
         }
-        printf("   %-7.3f   %-8s   %s\n", $iNow - $iStart, "{$sColor}{$delta}{$sColorReset}", trim($line));
+        printf(" %8.3f   %-12s  %s\n", $iNow - $iStart, "{$sColor}{$delta}{$sColorReset}", trim($line));
         $iLastLine = $iNow;
     }
 
